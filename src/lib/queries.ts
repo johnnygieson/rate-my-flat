@@ -60,3 +60,14 @@ export async function searchFlats(q: string): Promise<FlatWithStats[]> {
   if (error || !data) return [];
   return (data as RawFlat[]).map(toFlatWithStats);
 }
+
+export async function getCounts(): Promise<{ reviewCount: number; flatCount: number }> {
+  const [{ count: flatCount }, { count: reviewCount }] = await Promise.all([
+    supabase.from("flats").select("*", { count: "exact", head: true }),
+    supabase.from("reviews").select("*", { count: "exact", head: true }),
+  ]);
+  return {
+    flatCount: flatCount ?? 0,
+    reviewCount: reviewCount ?? 0,
+  };
+}
