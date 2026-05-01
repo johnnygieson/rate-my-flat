@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -9,14 +11,31 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Rate My Flat — Honest reviews of UK rentals",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ??
+      (process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000")
+  ),
+  title: {
+    default: "Rate My Flat — Honest reviews of UK rentals",
+    template: "%s · Rate My Flat",
+  },
   description:
     "See what it's actually like to live somewhere before you sign the lease. Reviews of UK flats by the people who lived in them.",
   openGraph: {
+    type: "website",
+    siteName: "Rate My Flat",
     title: "Rate My Flat — Honest reviews of UK rentals",
     description:
       "See what it's actually like to live somewhere before you sign the lease. Reviews of UK flats by the people who lived in them.",
-    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 
@@ -67,6 +86,8 @@ export default function RootLayout({
         </header>
 
         <div className="flex-1">{children}</div>
+        <Analytics />
+        <SpeedInsights />
 
         {/* Footer */}
         <footer className="border-t border-ink-200 bg-ink-50 px-4 py-10 text-center">

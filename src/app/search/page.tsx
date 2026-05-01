@@ -1,8 +1,20 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Star } from "lucide-react";
 import { searchFlats, type FlatWithStats } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}): Promise<Metadata> {
+  const { q } = await searchParams;
+  const query = q?.trim() ?? "";
+  if (!query) return {};
+  return { title: `Reviews for "${query}"` };
+}
 
 function FlatCard({ flat }: { flat: FlatWithStats }) {
   const address = [flat.address_line_1, flat.city, flat.postcode]

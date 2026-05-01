@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Star } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -128,6 +130,32 @@ const SIGNAL_SUMMARY: {
   },
 ];
 
+// ── Cached data fetches ───────────────────────────────────────────────────────
+
+const fetchFlat = cache(async (id: string) => {
+  const { data, error } = await supabase.from("flats").select("*").eq("id", id).single();
+  return { flat: data as Flat | null, error };
+});
+
+// ── Metadata ───────────────────────────────────────────────────────────────────
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const { flat } = await fetchFlat(id);
+  if (!flat) return { title: "Flat not found" };
+  const address = [flat.address_line_1, flat.address_line_2, flat.city, flat.postcode]
+    .filter(Boolean)
+    .join(", ");
+  return {
+    title: address,
+    description: `Read tenant reviews of ${address}. Find out about rent, landlord responsiveness, and what it's really like to live there.`,
+  };
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function RatingChip({ label, value }: { label: string; value: number }) {
@@ -257,9 +285,9 @@ export default async function FlatPage({
 }) {
   const { id } = await params;
 
-  const [{ data: flat, error: flatError }, { data: reviews, error: reviewsError }] =
+  const [{ flat, error: flatError }, { data: reviews, error: reviewsError }] =
     await Promise.all([
-      supabase.from("flats").select("*").eq("id", id).single(),
+      fetchFlat(id),
       supabase
         .from("reviews")
         .select("*")
@@ -269,7 +297,7 @@ export default async function FlatPage({
 
   if (flatError || !flat) notFound();
 
-  const typedFlat = flat as Flat;
+  const typedFlat = flat;
   const typedReviews: Review[] = (reviewsError ? [] : reviews) ?? [];
 
   const addressParts = [
@@ -395,6 +423,46 @@ export default async function FlatPage({
           )}
         </section>
       </div>
+
+      {/* JSON-LD structured data */}
+      {reviewCount > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Accommodation",
+              name: addressParts.join(", "),
+              address: {
+                "@type": "PostalAddress",
+                streetAddress: typedFlat.address_line_1,
+                addressLocality: typedFlat.city,
+                postalCode: typedFlat.postcode,
+                addressCountry: "GB",
+              },
+              aggregateRating: {
+                "@type": "AggregateRating",
+                ratingValue: avg(typedReviews, "overall_rating"),
+                reviewCount,
+                bestRating: 5,
+                worstRating: 1,
+              },
+              review: typedReviews.slice(0, 10).map((r) => ({
+                "@type": "Review",
+                author: { "@type": "Person", name: r.anonymous_name },
+                datePublished: r.created_at.split("T")[0],
+                reviewBody: r.review_text,
+                reviewRating: {
+                  "@type": "Rating",
+                  ratingValue: r.overall_rating,
+                  bestRating: 5,
+                  worstRating: 1,
+                },
+              })),
+            }),
+          }}
+        />
+      )}
     </main>
   );
 }
