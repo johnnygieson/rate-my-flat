@@ -1,74 +1,34 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { z } from "zod";
+import { reviewSchema, type ReviewInput } from "@/lib/reviewSchema";
 import { supabase } from "@/lib/supabase";
 
-// Coerces blank/whitespace strings to undefined before further validation
-const optionalString = z
-  .string()
-  .optional()
-  .transform((v) => (v?.trim() === "" ? undefined : v));
-
-const schema = z.object({
-  address_line_1: z.string().min(1, "Address line 1 is required"),
-  address_line_2: optionalString,
-  city: z.string().min(1, "City is required"),
-  postcode: z.string().min(1, "Postcode is required"),
-  monthly_rent_gbp: z.coerce.number().min(0, "Must be 0 or more"),
-  deposit_gbp: z.preprocess(
-    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
-    z.coerce.number().min(0, "Must be 0 or more").optional()
-  ),
-  bills_included: z.coerce.boolean().optional().default(false),
-  tenancy_start: z.string().min(1, "Tenancy start date is required"),
-  tenancy_end: optionalString,
-  overall_rating: z.coerce.number().int().min(1).max(5),
-  landlord_rating: z.coerce.number().int().min(1).max(5),
-  value_rating: z.coerce.number().int().min(1).max(5),
-  condition_rating: z.coerce.number().int().min(1).max(5),
-  mold_rating: z.coerce.number().int().min(1).max(5),
-  noise_rating: z.coerce.number().int().min(1).max(5),
-  pros: optionalString,
-  cons: optionalString,
-  review_text: z.string().min(1, "Review text is required"),
-  anonymous_name: z.string().min(1, "Name is required"),
-});
-
 export type FormState = {
-  errors?: Partial<Record<keyof z.infer<typeof schema>, string[]>> & { _form?: string[] };
-  values?: Record<string, string>;
+  errors?: Record<string, string[]> & { _form?: string[] };
 };
 
-const orNull = (v: string | undefined) => (v === undefined || v.trim() === "" ? null : v);
+const orNull = (v: string | null | undefined) =>
+  !v || v.trim() === "" ? null : v;
 
-export async function submitReview(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  const raw = Object.fromEntries(formData.entries());
-
-  // Checkboxes are absent from FormData when unchecked
-  if (!raw.bills_included) raw.bills_included = "false";
-
-  const result = schema.safeParse(raw);
+export async function submitReview(input: ReviewInput): Promise<FormState> {
+  const result = reviewSchema.safeParse(input);
 
   if (!result.success) {
     return {
       errors: result.error.flatten().fieldErrors as FormState["errors"],
-      values: Object.fromEntries(
-        Object.entries(raw).map(([k, v]) => [k, String(v)])
-      ),
     };
   }
 
   const d = result.data;
 
-  // Normalize for matching
+  if (d.letting_type === "agency" && !d.letting_agency_name?.trim()) {
+    return { errors: { letting_agency_name: ["Agency name is required"] } };
+  }
+
   const normalizedPostcode = d.postcode.toUpperCase().replace(/\s+/g, "");
   const normalizedAddress = d.address_line_1.trim().toLowerCase();
 
-  // Look up existing flat
   const { data: existingFlats, error: lookupError } = await supabase
     .from("flats")
     .select("id")
@@ -77,10 +37,7 @@ export async function submitReview(
     .limit(1);
 
   if (lookupError) {
-    return {
-      errors: { _form: [lookupError.message] },
-      values: Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, String(v)])),
-    };
+    return { errors: { _form: [lookupError.message] } };
   }
 
   let flatId: string;
@@ -101,8 +58,9 @@ export async function submitReview(
 
     if (insertFlatError || !newFlat) {
       return {
-        errors: { _form: [insertFlatError?.message ?? "Failed to create flat"] },
-        values: Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, String(v)])),
+        errors: {
+          _form: [insertFlatError?.message ?? "Failed to save the flat"],
+        },
       };
     }
 
@@ -114,14 +72,22 @@ export async function submitReview(
     monthly_rent_gbp: d.monthly_rent_gbp,
     deposit_gbp: d.deposit_gbp ?? null,
     bills_included: d.bills_included,
+    monthly_bills_gbp: d.monthly_bills_gbp ?? null,
+    bills_higher_than_expected: d.bills_higher_than_expected ?? null,
     tenancy_start: d.tenancy_start,
     tenancy_end: orNull(d.tenancy_end),
+    letting_type: d.letting_type,
+    letting_agency_name: orNull(d.letting_agency_name),
     overall_rating: d.overall_rating,
     landlord_rating: d.landlord_rating,
     value_rating: d.value_rating,
     condition_rating: d.condition_rating,
-    mold_rating: d.mold_rating,
-    noise_rating: d.noise_rating,
+    has_damp_mold: d.has_damp_mold ?? null,
+    has_reliable_hot_water: d.has_reliable_hot_water ?? null,
+    has_noise_issues: d.has_noise_issues ?? null,
+    has_pest_issues: d.has_pest_issues ?? null,
+    deposit_returned_in_full: d.deposit_returned_in_full ?? null,
+    landlord_responsive: d.landlord_responsive ?? null,
     pros: orNull(d.pros),
     cons: orNull(d.cons),
     review_text: d.review_text,
@@ -129,10 +95,7 @@ export async function submitReview(
   });
 
   if (reviewError) {
-    return {
-      errors: { _form: [reviewError.message] },
-      values: Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, String(v)])),
-    };
+    return { errors: { _form: [reviewError.message] } };
   }
 
   redirect(`/flats/${flatId}`);
