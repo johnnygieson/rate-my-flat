@@ -57,7 +57,6 @@ type Flat = {
 type Review = {
   id: string;
   created_at: string;
-  anonymous_name: string;
   monthly_rent_gbp: number;
   deposit_gbp: number | null;
   bills_included: boolean | null;
@@ -210,8 +209,7 @@ function ReviewCard({ review }: { review: Review }) {
   return (
     <article className="rounded-xl border border-ink-200 bg-white p-6 space-y-4">
       {/* Header */}
-      <div className="flex items-baseline justify-between gap-4 flex-wrap">
-        <span className="font-semibold text-ink-900">{review.anonymous_name}</span>
+      <div className="flex items-baseline justify-end gap-4 flex-wrap">
         <span className="text-sm text-ink-400">{formatDate(review.created_at)}</span>
       </div>
 
@@ -449,7 +447,7 @@ export default async function FlatPage({
               },
               review: typedReviews.slice(0, 10).map((r) => ({
                 "@type": "Review",
-                author: { "@type": "Person", name: r.anonymous_name },
+                author: { "@type": "Person", name: "Anonymous" },
                 datePublished: r.created_at.split("T")[0],
                 reviewBody: r.review_text,
                 reviewRating: {

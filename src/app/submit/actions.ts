@@ -91,7 +91,7 @@ export async function submitReview(input: ReviewInput): Promise<FormState> {
     pros: orNull(d.pros),
     cons: orNull(d.cons),
     review_text: d.review_text,
-    anonymous_name: d.anonymous_name,
+    anonymous_name: "Anonymous",
   });
 
   if (reviewError) {

@@ -32,7 +32,6 @@ export const reviewSchema = z.object({
   pros: z.string().optional(),
   cons: z.string().optional(),
   review_text: z.string().min(1, "Please write a review"),
-  anonymous_name: z.string().min(1, "Name is required"),
 });
 
 export type ReviewInput = z.infer<typeof reviewSchema>;

@@ -296,7 +296,6 @@ export function SubmitForm() {
       pros: "",
       cons: "",
       review_text: "",
-      anonymous_name: "",
     },
   });
 
@@ -789,22 +788,6 @@ export function SubmitForm() {
                     className={`${inputCls} resize-y`}
                     placeholder="What did the listing not mention? (e.g. damp behind the bed, the boiler breaking three times, the upstairs piano hour)"
                   />
-                </div>
-              </SectionCard>
-
-              <SectionCard title="About you">
-                <div>
-                  <Label htmlFor="anonymous_name">Your name or handle</Label>
-                  <input
-                    id="anonymous_name"
-                    {...register("anonymous_name")}
-                    className={inputCls}
-                    placeholder="e.g. Ex-tenant, M. from Leeds"
-                  />
-                  <p className="mt-1 text-xs text-ink-400">
-                    Doesn&apos;t need to be your real name.
-                  </p>
-                  <FieldError msg={errors.anonymous_name?.message} />
                 </div>
               </SectionCard>
 
