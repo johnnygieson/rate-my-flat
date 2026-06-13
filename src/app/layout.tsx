@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import Script from "next/script";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -88,6 +89,18 @@ export default function RootLayout({
         <div className="flex-1">{children}</div>
         <Analytics />
         <SpeedInsights />
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-12SNPM2MY5"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-12SNPM2MY5');
+          `}
+        </Script>
 
         {/* Footer */}
         <footer className="border-t border-ink-200 bg-ink-50 px-4 py-10 text-center">
